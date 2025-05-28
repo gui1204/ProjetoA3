@@ -1,38 +1,51 @@
-import os
 from fastapi import FastAPI
 from pydantic import BaseModel
-from dotenv import load_dotenv
-from langchain.document_loaders import PyPDFLoader
+from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.embeddings import OpenAIEmbeddings
-from langchain.vectorstores import FAISS
-from langchain.chains.question_answering import load_qa_chain
-from langchain.llms import OpenAI
+from langchain.docstore.document import Document
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_community.vectorstores import FAISS
 
-load_dotenv()
 app = FastAPI()
 
-# Carrega PDF
-loader = PyPDFLoader("manual.pdf")
-pages = loader.load()
-
-# Divide o texto em pedaços
-text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
-docs = text_splitter.split_documents(pages)
-
-# Cria embeddings com FAISS (local, rápido e gratuito)
-embeddings = OpenAIEmbeddings()
-db = FAISS.from_documents(docs, embeddings)
-
-# Configura modelo LLM + QA chain
-llm = OpenAI(temperature=0)
-qa_chain = load_qa_chain(llm, chain_type="stuff")
-
-class Question(BaseModel):
+@app.get("/")
+def read_root():
+    return {"message": "Chatbot do HB20 está online!"}
+class Query(BaseModel):
     question: str
 
-@app.post("/ask")
-async def ask(q: Question):
-    docs_similares = db.similarity_search(q.question)
-    resposta = qa_chain.run(input_documents=docs_similares, question=q.question)
-    return {"answer": resposta}
+@app.on_event("startup")
+def startup_event():
+    global db, embeddings
+
+    # Ler PDF
+    pdf_path = "manual.pdf"
+    reader = PdfReader(pdf_path)
+    full_text = ""
+    for page in reader.pages:
+        text = page.extract_text()
+        if text:
+            full_text += text + "\n"
+
+    # Dividir texto em pedaços
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    texts = text_splitter.split_text(full_text)
+
+    # Criar documentos para LangChain (opcional se usar só textos)
+    docs = [Document(page_content=t) for t in texts]
+
+    # Criar embeddings
+    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+
+    # Criar índice FAISS
+    db = FAISS.from_texts(texts, embedding=embeddings)
+
+@app.post("/query")
+def query_manual(q: Query):
+    # Criar embedding da pergunta
+    query_embedding = embeddings.embed_query(q.question)
+
+    # Buscar textos similares no FAISS
+    results = db.similarity_search_by_vector(query_embedding, k=3)
+
+    return {"results": [r.page_content for r in results]}
