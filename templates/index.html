@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hyundai HB20 - ChatBot</title>
+    <style>
+        /* Imagem de fundo */
+        body {
+            background-image: url("https://cdn.motor1.com/images/mgl/0ANmm/s1/hyundai-hb20-2023.jpg");
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Container com fundo escuro translúcido */
+        .container {
+            background: rgba(0, 0, 0, 0.75);
+            max-width: 600px;
+            width: 90%;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.6);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border-radius: 5px;
+            border: none;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #0072c6;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #005a9c;
+        }
+
+        .response {
+            margin-top: 20px;
+            background: #222;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap; /* mantém quebras de linha */
+            min-height: 100px;
+            font-size: 15px;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ChatBot Hyundai HB20</h1>
+        <input type="text" id="question" placeholder="Digite sua pergunta sobre o HB20..." />
+        <button onclick="sendQuestion()">Enviar</button>
+        <div class="response" id="responseBox"></div>
+    </div>
+
+    <script>
+        async function sendQuestion() {
+            const userMessage = document.getElementById("question").value.trim();
+            const responseBox = document.getElementById("responseBox");
+
+            if (!userMessage) {
+                responseBox.innerHTML = "Por favor, digite uma pergunta.";
+                return;
+            }
+
+            responseBox.innerHTML = "Carregando resposta...";
+
+            try {
+                const response = await fetch("/query", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ pergunta: userMessage })
+                });
+
+                const data = await response.json();
+
+                if (data.resposta) {
+                    responseBox.innerHTML = data.resposta.replace(/\n/g, "<br>");
+                } else {
+                    responseBox.innerHTML = "Nenhuma resposta encontrada.";
+                }
+            } catch (error) {
+                responseBox.innerHTML = "Erro ao se comunicar com o servidor.";
+                console.error("Erro:", error);
+            }
+        }
+    </script>
+</body>
+</html>
