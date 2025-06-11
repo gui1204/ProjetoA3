@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from pypdf import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -177,6 +178,10 @@ async def lifespan(app: FastAPI):
 
 # === APP SETUP ===
 app = FastAPI(lifespan=lifespan)
+
+# Monta a pasta estática para servir arquivos como imagens
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 templates = Jinja2Templates(directory="templates")
 
 @app.get("/")
